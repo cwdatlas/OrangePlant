@@ -55,7 +55,7 @@ class Boss {
         // List all processed products to the console
         System.out.println("Oranges Processed: " + processedOranges);
         System.out.println("Oranges Wasted: " + wastedOranges);
-        System.out.println("Oranges juice Created : " + juiceBottles);
+        System.out.println("Oranges juice Created: " + juiceBottles);
 
     }
 
