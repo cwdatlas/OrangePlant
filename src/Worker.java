@@ -1,12 +1,16 @@
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class Worker implements Runnable{
-    final String type;
+    final WorkerType type;
     Map<String, TSQueue> queues;
+    AtomicBoolean running;
 
-    Worker(String type, Map<String, TSQueue> queues){
+    Worker(WorkerType type, Map<String, TSQueue> queues, AtomicBoolean running){
         this.type = type;
         this.queues = queues;
+        this.running = running;
+
     }
     /**
      * When an object implementing interface {@code Runnable} is used
@@ -21,31 +25,39 @@ public class Worker implements Runnable{
      */
     @Override
     public void run() {
-        switch(type){
-            case "fetcher":{
-                Orange orange = new Orange();
-                orange.runProcess();
-                queues.get("fetchedQueue").push(orange);
-            }
-            case "peeler":{
-                Orange orange = queues.get("fetchedQueue").pop();
-                orange.runProcess();
-                queues.get("peeledQueue").push(orange);
-            }
-            case "squeezer":{
-                Orange orange = queues.get("peeledQueue").pop();
-                orange.runProcess();
-                queues.get("squeezedQueue").push(orange);
-            }
-            case "bottler":{
-                Orange orange = queues.get("squeezedQueue").pop();
-                orange.runProcess();
-                queues.get("bottledQueue").push(orange);
-            }
-            case "processer":{
-                Orange orange = queues.get("bottledQueue").pop();
-                orange.runProcess();
-                queues.get("processedQueue").push(orange);
+        while(running.get()) {
+            switch (type) {
+                case FETCHER: {
+                    Orange orange = new Orange();
+                    queues.get("fetchedQueue").push(orange);
+                    break;
+                }
+                case PEELER: {
+                    Orange orange = queues.get("fetchedQueue").pop();
+                    orange.runProcess();
+                    queues.get("peeledQueue").push(orange);
+                    break;
+                }
+                case SQUEEZER: {
+                    Orange orange = queues.get("peeledQueue").pop();
+                    orange.runProcess();
+                    queues.get("squeezedQueue").push(orange);
+                    break;
+                }
+                case BOTTLER: {
+                    Orange orange = queues.get("squeezedQueue").pop();
+                    orange.runProcess();
+                    queues.get("bottledQueue").push(orange);
+                    break;
+                }
+                case PROCESSER: {
+                    Orange orange = queues.get("bottledQueue").pop();
+                    orange.runProcess();
+                    queues.get("processedQueue").push(orange);
+                    break;
+                }
+                default:
+                    System.out.println("Did not find job for worker");
             }
         }
     }
