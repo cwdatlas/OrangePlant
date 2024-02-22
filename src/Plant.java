@@ -1,35 +1,27 @@
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class Plant implements Runnable {
-    public final int ORANGES_PER_BOTTLE = 4;
-    final Map<String, TSQueue> queueMap = new HashMap<>();
-    final TSQueue fetchedQueue = new TSQueue();
-    final TSQueue peeledQueue = new TSQueue();
-    final TSQueue squeezedQueue = new TSQueue();
-    final TSQueue bottledQueue = new TSQueue();
-    final TSQueue processedQueue = new TSQueue();
-    final Thread[] workers = new Thread[5];
-    private Thread fetcher = new Thread(new Worker("fetcher", queueMap));
-    private Thread peeler = new Thread(new Worker("peeler", queueMap));
-    private Thread squeezer = new Thread(new Worker("squeezer", queueMap));
-    private Thread bottler = new Thread(new Worker("bottler", queueMap));
-    private Thread processer = new Thread(new Worker("processer", queueMap));
-    private int orangesProcessed;
+    private final int ORANGES_PER_BOTTLE = 4;
+    private final AtomicBoolean runningWorkers = new AtomicBoolean(true);
+    private final Map<String, TSQueue> queueMap = new HashMap<>();
+    private final Thread[] workers = new Thread[5];
+
 
     Plant() {
         // adding queues to the dictionary
-        queueMap.put("fetchedQueue", fetchedQueue);
-        queueMap.put("peeledQueue", peeledQueue);
-        queueMap.put("squeezedQueue", squeezedQueue);
-        queueMap.put("bottledQueue", bottledQueue);
-        queueMap.put("processedQueue", processedQueue);
+        queueMap.put("fetchedQueue", new TSQueue());
+        queueMap.put("peeledQueue", new TSQueue());
+        queueMap.put("squeezedQueue", new TSQueue());
+        queueMap.put("bottledQueue", new TSQueue());
+        queueMap.put("processedQueue", new TSQueue());
 
-        workers[0] = fetcher;
-        workers[1] = peeler;
-        workers[2] = squeezer;
-        workers[3] = bottler;
-        workers[4] = processer;
+        workers[0] = new Thread(new Worker(WorkerType.FETCHER, queueMap, runningWorkers));
+        workers[1] = new Thread(new Worker(WorkerType.PEELER, queueMap, runningWorkers));
+        workers[2] = new Thread(new Worker(WorkerType.SQUEEZER, queueMap, runningWorkers));
+        workers[3] = new Thread(new Worker(WorkerType.BOTTLER, queueMap, runningWorkers));
+        workers[4] = new Thread(new Worker(WorkerType.PROCESSER, queueMap, runningWorkers));
 
     }
 
@@ -52,11 +44,12 @@ public class Plant implements Runnable {
         }
     }
     public void stopWorkers(){
+        runningWorkers.set(false);
         for(Thread i:workers){
             try {
                 i.join();
             } catch (InterruptedException e) {
-                throw new RuntimeException(e);
+                Thread.currentThread().interrupt();
             }
         }
     }
@@ -64,16 +57,16 @@ public class Plant implements Runnable {
     //TODO this needs to be thread safe
     //This is being saved to by the plant, and read by the boss
     public int getProcessedOranges() {
-        return orangesProcessed;
+        return queueMap.get("processedQueue").getLength();
     }
     //TODO this needs to be thread safe
     //This is being saved to by the plant, and read by the boss
     public int getBottles() {
-        return orangesProcessed / ORANGES_PER_BOTTLE;
+        return getProcessedOranges() / ORANGES_PER_BOTTLE;
     }
     //TODO this needs to be thread safe
     //This is being saved to by the plant, and read by the boss
     public int getWaste() {
-        return orangesProcessed % ORANGES_PER_BOTTLE;
+        return getProcessedOranges() % ORANGES_PER_BOTTLE;
     }
 }
